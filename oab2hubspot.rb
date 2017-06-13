@@ -4,8 +4,10 @@ require 'dotenv/load'
 require 'exchange-offline-address-book'
 require 'phony'
 require 'ostruct'
-require 'namae'
 require 'hubspot-ruby'
+
+require 'autodiscover'
+require "autodiscover/debug"
 
 Hubspot.configure(hapikey: ENV["HUBSPOT"])
 

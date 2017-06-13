@@ -5,4 +5,5 @@ source 'https://rubygems.org'
 
 gem 'exchange-offline-address-book'
 gem 'phony'
+gem 'dotenv'
 gem "hubspot-ruby"

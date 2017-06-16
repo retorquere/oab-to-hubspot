@@ -21,7 +21,7 @@ def normalize(number)
   number.gsub!(/^\+/, '00')
   number.gsub!(/^0([1-9])/) { "0031#{$1}" }
   number.gsub!(/^00/, '+')
-  Phony.plausible?(number) ? Phony.format(Phony.normalize(number), format: :international) : nil
+  Phony.plausible?(number) ? Phony.format(Phony.normalize(number), format: :international).gsub(' ', '') : nil
 end
 
 PRIMARY = []
@@ -66,33 +66,43 @@ oab.records.each{|record|
   GAL[contact[:email]] = contact
 }
 
+def assign(contact, number, fallback = true)
+  parts = Phony.split(Phony.normalize(number))
+  mobile = parts[0,2] == ['31', '6']
+
+  if mobile && !contact[:mobilephone]
+    contact[:mobilephone] = number
+
+  elsif !mobile && !contact[:phone]
+    contact[:phone] = number
+
+  elsif !contact[:mobilephone]
+    contact[:mobilephone] = number
+
+  elsif !contact[:phone]
+    contact[:phone] = number
+
+  elsif fallback
+    fallback = contact[:email].sub('@', '+assistant@')
+    GAL[fallback] ||= {
+      lastname: 'Assistant to ' + contact[:lastname],
+      email: fallback
+    }
+    assign(GAL[fallback], number, false)
+
+  else
+    raise contact[:lastname]
+
+  end
+end
+
 GAL.values.each{|contact|
   contact[:secondary] = contact[:secondary] - PRIMARY
   contact[:primary].each{|n|
-    parts = Phony.split(Phony.normalize(n))
-    if parts[0,2] == ['31', '6'] && !contact[:mobilephone]
-      contact[:mobilephone] = n
-    elsif parts[0,2] != ['31', '6'] && !contact[:phone]
-      contact[:phone] = n
-    elsif !contact[:phone]
-      contact[:phone] = n
-    elsif !contact[:mobilephone]
-      contact[:mobilephone] = n
-    else
-      raise contact[:lastname]
-    end
+    assign(contact, n)
   }
   contact[:secondary].each{|n|
-    parts = Phony.split(Phony.normalize(n))
-    if parts[0,2] == ['31', '6'] && !contact[:mobilephone]
-      contact[:mobilephone] = n
-    elsif parts[0,2] != ['31', '6'] && !contact[:phone]
-      contact[:phone] = n
-    elsif !contact[:secondary_phone]
-      contact[:secondary_phone]= n
-    else
-      raise contact[:lastname]
-    end
+    assign(contact, n)
   }
 
   contact.delete(:primary)

@@ -2,12 +2,14 @@
 
 require 'dotenv/load'
 require 'exchange-offline-address-book'
-require 'phony'
-require 'ostruct'
+require 'json'
 require 'hubspot-ruby'
 
 require 'autodiscover'
-require "autodiscover/debug"
+#require "autodiscover/debug"
+
+require 'phonelib'
+Phonelib.default_country = "NL"
 
 Hubspot.configure(hapikey: ENV["HUBSPOT"])
 
@@ -16,12 +18,8 @@ oab = OfflineAddressBook.new(username: ENV['EWS_USERNAME'], password: ENV['EWS_P
 GAL = {}
 
 def normalize(number)
-  number = "#{number}".strip
-  number = "00#{number}" if number =~ /^31/
-  number.gsub!(/^\+/, '00')
-  number.gsub!(/^0([1-9])/) { "0031#{$1}" }
-  number.gsub!(/^00/, '+')
-  Phony.plausible?(number) ? Phony.format(Phony.normalize(number), format: :international).gsub(' ', '') : nil
+  return nil unless Phonelib.valid?(number)
+  return Phonelib.parse(number)
 end
 
 PRIMARY = []
@@ -34,7 +32,6 @@ oab.records.each{|record|
     primary: [],
     secondary: [],
   }
-
 
   [
     :BusinessTelephoneNumber,
@@ -53,11 +50,11 @@ oab.records.each{|record|
       contact[kind].concat(record[field].collect{|n| normalize(n)})
     end
   }
-  contact[:primary].compact!
-  contact[:primary].uniq!
-  contact[:secondary].compact!
-  contact[:secondary].uniq!
-  PRIMARY.concat(contact[:primary])
+  [:primary, :secondary].each{|cat|
+    contact[cat].compact!
+    contact[cat].uniq!{|n| n.to_s}
+  }
+  PRIMARY.concat(contact[:primary].collect{|n| n.to_s})
 
   next if contact[:primary].empty? && contact[:secondary].empty?
 
@@ -66,38 +63,38 @@ oab.records.each{|record|
   GAL[contact[:email]] = contact
 }
 
+def assigned(contact, type, number)
+  return false if contact[type]
+  contact[type] = number.to_s
+  return true
+end
+
 def assign(contact, number, fallback = true)
-  parts = Phony.split(Phony.normalize(number))
-  mobile = parts[0,2] == ['31', '6']
+  case number.type
+    when :mobile
+      return if assigned(contact, :mobilephone, number)
+      return if assigned(contact, :phone, number)
+    when :fixed_line
+      return if assigned(contact, :phone, number)
+      return if assigned(contact, :mobilephone, number)
+    else
+      raise "#{contact[:lastname]}/#{number}: #{number.type.inspect}"
+  end
 
-  if mobile && !contact[:mobilephone]
-    contact[:mobilephone] = number
-
-  elsif !mobile && !contact[:phone]
-    contact[:phone] = number
-
-  elsif !contact[:mobilephone]
-    contact[:mobilephone] = number
-
-  elsif !contact[:phone]
-    contact[:phone] = number
-
-  elsif fallback
+  if fallback
     fallback = contact[:email].sub('@', '+assistant@')
     GAL[fallback] ||= {
       lastname: 'Assistant to ' + contact[:lastname],
       email: fallback
     }
-    assign(GAL[fallback], number, false)
-
-  else
-    raise contact[:lastname]
-
+    return assign(GAL[fallback], number, false)
   end
+
+  raise "#{contact[:lastname]}/#{number}: #{number.type.inspect}"
 end
 
 GAL.values.each{|contact|
-  contact[:secondary] = contact[:secondary] - PRIMARY
+  contact[:secondary] = contact[:secondary].reject{|n| PRIMARY.include?(n.to_s)}
   contact[:primary].each{|n|
     assign(contact, n)
   }
@@ -108,6 +105,8 @@ GAL.values.each{|contact|
   contact.delete(:primary)
   contact.delete(:secondary)
 }
+
+open('gal.json', 'w'){|f| f.write(JSON.pretty_generate(GAL)) }
 
 GAL.values.each_slice(100).each{|contacts|
   Hubspot::Contact.create_or_update!(contacts)

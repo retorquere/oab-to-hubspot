@@ -44,7 +44,7 @@ GEM
     nokogiri (1.8.0)
       mini_portile2 (~> 2.2.0)
     nori (2.6.0)
-    phony (2.15.44)
+    phonelib (0.6.12)
     rake (12.0.0)
     thread_safe (0.3.6)
     tzinfo (1.2.3)
@@ -57,7 +57,7 @@ DEPENDENCIES
   dotenv
   exchange-offline-address-book
   hubspot-ruby
-  phony
+  phonelib
 
 BUNDLED WITH
    1.15.1

@@ -11,7 +11,7 @@ require "autodiscover/debug"
 
 Hubspot.configure(hapikey: ENV["HUBSPOT"])
 
-oab = OfflineAddressBook.new(username: ENV['USERNAME'], password: ENV['PASSWORD'], email: ENV['EMAIL'], cachedir: File.dirname(__FILE__))
+oab = OfflineAddressBook.new(username: ENV['EWS_USERNAME'], password: ENV['EWS_PASSWORD'], email: ENV['EWS_EMAIL'], cachedir: File.dirname(__FILE__), baseurl: ENV['EWS_BASEURL'])
 
 GAL = {}
 

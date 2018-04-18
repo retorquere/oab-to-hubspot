@@ -1,9 +1,10 @@
-#ruby=2.3
+#ruby=2.4
 #ruby-gemset=oab
 
 source 'https://rubygems.org'
-
-gem 'exchange-offline-address-book'
-gem 'phonelib'
 gem 'dotenv'
-gem "hubspot-ruby"
+gem 'nokogiri'
+gem 'libmspack'
+gem 'sqlite3'
+gem 'phonelib'
+#gem 'hubspot-ruby'

@@ -3,7 +3,7 @@
 
 source 'https://rubygems.org'
 gem 'dotenv'
-gem 'nokogiri'
+gem 'nokogiri', '>= 1.11.4'
 gem 'libmspack'
 gem 'sqlite3'
 gem 'phonelib'
